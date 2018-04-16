@@ -96,6 +96,67 @@ namespace stan {
       }
     }
 
+
+    /** Not yet the Hessian -- one step at a time! */
+    template <bool propto, bool jacobian_adjust_transform, class M>
+    double log_prob_hessian(const M& model,
+                            Eigen::VectorXd& params_r,
+                            Eigen::VectorXd& gradient,
+                            std::ostream* msgs = 0) {
+      using std::vector;
+      using stan::math::var;
+
+      Eigen::Matrix<var, Eigen::Dynamic, 1> ad_params_r(params_r.size());
+      for (size_t i = 0; i < model.num_params_r(); ++i) {
+        stan::math::var var_i(params_r[i]);
+        ad_params_r[i] = var_i;
+      }
+      try {
+        var adLogProb
+          = model
+          .template log_prob<propto,
+                             jacobian_adjust_transform>(ad_params_r, msgs);
+        double val = adLogProb.val();
+        stan::math::grad(adLogProb, ad_params_r, gradient);
+        //stan::math::hessian(adLogProb, ad_params_r, gradient);
+        return val;
+      } catch (std::exception &ex) {
+        stan::math::recover_memory();
+        throw;
+      }
+    }
+
   }
+
+  /** Not yet the Hessian -- one step at a time! */
+  template <bool propto, bool jacobian_adjust_transform, class M>
+  double log_prob_hessian(const M& model,
+                          std::vector<double>& params_r,
+                          std::vector<int>& params_i,
+                          std::vector<double>& gradient,
+                          std::ostream* msgs = 0) {
+    using std::vector;
+    using stan::math::var;
+    double lp;
+    try {
+      vector<var> ad_params_r(params_r.size());
+      for (size_t i = 0; i < model.num_params_r(); ++i) {
+        stan::math::var var_i(params_r[i]);
+        ad_params_r[i] = var_i;
+      }
+      var adLogProb
+        = model.template log_prob<propto, jacobian_adjust_transform>
+        (ad_params_r, params_i, msgs);
+      lp = adLogProb.val();
+      adLogProb.grad(ad_params_r, gradient);
+      //stan::math::hessian(adLogProb, ad_params_r, gradient);
+    } catch (const std::exception &ex) {
+      stan::math::recover_memory();
+      throw;
+    }
+    stan::math::recover_memory();
+    return lp;
+  }
+
 }
 #endif
