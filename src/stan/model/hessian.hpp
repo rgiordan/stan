@@ -20,7 +20,6 @@ namespace stan {
                                                 x, f, grad_f, hess_f);
     }
 
-
     template <bool propto, bool jacobian_adjust_transform, class M>
     void log_prob_hessian(
         const M& model,
