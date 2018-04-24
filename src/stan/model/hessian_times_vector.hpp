@@ -20,6 +20,20 @@ namespace stan {
                                        x, v, f, hess_f_dot_v);
     }
 
+    template <bool propto, bool jacobian_adjust_transform, class M>
+    void log_prob_hessian_times_vector(
+        const Eigen::Matrix<double, Eigen::Dynamic, 1>& x,
+        const Eigen::Matrix<double, Eigen::Dynamic, 1>& v,
+        double& f,
+        Eigen::Matrix<double, Eigen::Dynamic, 1>&
+        hess_f_dot_v,
+        std::ostream* msgs = 0) {
+      stan::math::hessian_times_vector<
+        model_functional_template<propto, jacobian_adjust_transform, M>>(
+          model_functional_template<propto, jacobian_adjust_transform, M>(model, msgs),
+              x, v, f, hess_f_dot_v);
+    }
+
   }
 }
 #endif
