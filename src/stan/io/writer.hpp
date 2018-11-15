@@ -166,6 +166,21 @@ namespace stan {
 
       /**
        * Write the unconstrained value corresponding to the specified
+       * value with the specified location and scale.  The unconstraining
+       * transform is given by <code>(y-loc)/scale</code>, which
+       * inverts the constraining transform defined in
+       * <code>scalar_locscale_constrain(double,double)</code>.
+       *
+       * @param loc Location.
+       * @param scale Scale.
+       * @param y Bounded value.
+       */
+      void scalar_locscale_unconstrain(double loc, double scale, T& y) {
+        data_r_.push_back(stan::math::locscale_free(y, loc, scale));
+      }
+
+      /**
+       * Write the unconstrained value corresponding to the specified
        * correlation-constrained variable.
        *
        * <p>The unconstraining transform is <code>atanh(y)</code>, which
@@ -334,6 +349,23 @@ namespace stan {
             scalar_lub_unconstrain(lb, ub, y(i, j));
       }
 
+      void vector_locscale_unconstrain(double loc, double scale, vector_t& y) {
+        typedef typename stan::math::index_type<vector_t>::type idx_t;
+        for (idx_t i = 0; i < y.size(); ++i)
+          scalar_locscale_unconstrain(loc, scale, y(i));
+      }
+      void row_vector_locscale_unconstrain(double loc, double scale,
+                                           row_vector_t& y) {
+        typedef typename stan::math::index_type<row_vector_t>::type idx_t;
+        for (idx_t i = 0; i < y.size(); ++i)
+          scalar_locscale_unconstrain(loc, scale, y(i));
+      }
+      void matrix_locscale_unconstrain(double loc, double scale, matrix_t& y) {
+        typedef typename stan::math::index_type<matrix_t>::type idx_t;
+        for (idx_t j = 0; j < y.cols(); ++j)
+          for (idx_t i = 0; i < y.rows(); ++i)
+            scalar_locscale_unconstrain(loc, scale, y(i, j));
+      }
 
 
       /**
@@ -390,12 +422,12 @@ namespace stan {
        *
        * <p>The unconstraining operation is the inverse of the
        * constraining operation in
-       * <code>cov_matrix_constrain(Matrix<T,Dynamic,Dynamic)</code>.
+       * <code>cholesky_factor_cov_constrain(Matrix<T,Dynamic,Dynamic)</code>.
        *
        * @param y Constrained covariance matrix.
        * @throw std::runtime_error if y has no elements or if it is not square
        */
-      void cholesky_factor_unconstrain(matrix_t& y) {
+      void cholesky_factor_cov_unconstrain(matrix_t& y) {
         typedef typename stan::math::index_type<matrix_t>::type idx_t;
 
         // FIXME:  optimize by unrolling cholesky_factor_free
@@ -412,12 +444,12 @@ namespace stan {
        *
        * <p>The unconstraining operation is the inverse of the
        * constraining operation in
-       * <code>cov_matrix_constrain(Matrix<T,Dynamic,Dynamic)</code>.
+       * <code>cholesky_factor_corr_constrain(Matrix<T,Dynamic,Dynamic)</code>.
        *
-       * @param y Constrained covariance matrix.
+       * @param y Constrained correlation matrix.
        * @throw std::runtime_error if y has no elements or if it is not square
        */
-      void cholesky_corr_unconstrain(matrix_t& y) {
+      void cholesky_factor_corr_unconstrain(matrix_t& y) {
         typedef typename stan::math::index_type<matrix_t>::type idx_t;
 
         // FIXME:  optimize by unrolling cholesky_factor_free
@@ -465,9 +497,9 @@ namespace stan {
        * @param y Constrained correlation matrix.
        * @throw std::runtime_error if the correlation matrix has no elements or
        *    is not a square matrix.
-       * @throw std::runtime_error if the correlation matrix cannot be factorized
-       *    by factor_cov_matrix() or if the sds returned by factor_cov_matrix()
-       *    on log scale are unconstrained.
+       * @throw std::runtime_error if the correlation matrix is non-symmetric,
+       *   diagonals not near 1, not positive definite, or any of the
+       *   elements nan.
        */
       void corr_matrix_unconstrain(matrix_t& y) {
         typedef typename stan::math::index_type<matrix_t>::type idx_t;

@@ -677,6 +677,57 @@ namespace stan {
       }
 
       /**
+       * Return the next scalar.
+       *
+       * @tparam TL Type of location.
+       * @tparam TS Type of scale.
+       * @param loc Location.
+       * @param scal Scale.
+       * @return Next scalar value.
+       */
+      template <typename TL, typename TS>
+      inline T scalar_locscale(const TL loc, const TS scale) {
+        T x(scalar());
+        return x;
+      }
+
+      /**
+       * Return the next scalar transformed to have the specified location and
+       * scale.
+       *
+       * <p>See <code>stan::math::locscale_constrain(T, double, double)</code>.
+       *
+       * @tparam TL Type of location.
+       * @tparam TS Type of scale.
+       * @param loc Location.
+       * @param scale Scale.
+       * @return Next scalar transformed to fall between the specified
+       * bounds.
+       */
+      template <typename TL, typename TS>
+      inline T scalar_locscale_constrain(const TL loc, const TS scale) {
+        return stan::math::locscale_constrain(scalar(), loc, scale);
+      }
+
+      /**
+       * Return the next scalar transformed to have the specified location and
+       * scale.
+       *
+       * <p>See <code>stan::math::locscale_constrain(T, double, double, T&)</code>.
+       *
+       * @param loc Location.
+       * @param scale Scale.
+       * @param lp Reference to log probability variable to increment.
+       * @tparam T Type of scalar.
+       * @tparam TL Type of location.
+       * @tparam TS Type of scale.
+       */
+      template <typename TL, typename TS>
+      inline T scalar_locscale_constrain(TL loc, TS scale, T& lp) {
+        return stan::math::locscale_constrain(scalar(), loc, scale, lp);
+      }
+
+      /**
        * Return the next scalar, checking that it is a valid value for
        * a probability, between 0 (inclusive) and 1 (inclusive).
        *
@@ -951,7 +1002,6 @@ namespace stan {
       }
 
 
-
       /**
        * Return the next Cholesky factor with the specified
        * dimensionality, reading it directly without transforms.
@@ -962,9 +1012,9 @@ namespace stan {
        * @throw std::domain_error if the matrix is not a valid
        * Cholesky factor.
        */
-      inline matrix_t cholesky_factor(size_t M, size_t N) {
+      inline matrix_t cholesky_factor_cov(size_t M, size_t N) {
         matrix_t y(matrix(M, N));
-        stan::math::check_cholesky_factor("stan::io::cholesky_factor",
+        stan::math::check_cholesky_factor("stan::io::cholesky_factor_cov",
                                           "Constrained matrix", y);
         return y;
       }
@@ -980,7 +1030,7 @@ namespace stan {
        * @throw std::domain_error if the matrix is not a valid
        *    Cholesky factor.
        */
-      inline matrix_t cholesky_factor_constrain(size_t M, size_t N) {
+      inline matrix_t cholesky_factor_cov_constrain(size_t M, size_t N) {
         return stan::math::cholesky_factor_constrain
           (vector((N * (N + 1)) / 2 + (M - N) * N), M, N);
       }
@@ -998,12 +1048,10 @@ namespace stan {
        * @throw std::domain_error if the matrix is not a valid
        *    Cholesky factor.
        */
-      inline matrix_t cholesky_factor_constrain(size_t M, size_t N, T& lp) {
+      inline matrix_t cholesky_factor_cov_constrain(size_t M, size_t N, T& lp) {
         return stan::math::cholesky_factor_constrain
           (vector((N * (N + 1)) / 2 + (M - N) * N), M, N, lp);
       }
-
-
 
       /**
        * Return the next Cholesky factor for a correlation matrix with
@@ -1015,7 +1063,7 @@ namespace stan {
        * @throw std::domain_error if the matrix is not a valid
        * Cholesky factor for a correlation matrix.
        */
-      inline matrix_t cholesky_corr(size_t K) {
+      inline matrix_t cholesky_factor_corr(size_t K) {
         using stan::math::check_cholesky_factor_corr;
         matrix_t y(matrix(K, K));
         check_cholesky_factor_corr("stan::io::cholesky_factor_corr",
@@ -1033,7 +1081,7 @@ namespace stan {
        * @throw std::domain_error if the matrix is not a valid
        *    Cholesky factor for a correlation matrix.
        */
-      inline matrix_t cholesky_corr_constrain(size_t K) {
+      inline matrix_t cholesky_factor_corr_constrain(size_t K) {
         return stan::math::cholesky_corr_constrain(vector((K * (K - 1)) / 2),
                                                           K);
       }
@@ -1051,11 +1099,10 @@ namespace stan {
        * @throw std::domain_error if the matrix is not a valid
        *    Cholesky factor for a correlation matrix.
        */
-      inline matrix_t cholesky_corr_constrain(size_t K, T& lp) {
+      inline matrix_t cholesky_factor_corr_constrain(size_t K, T& lp) {
         return stan::math::cholesky_corr_constrain(vector((K * (K - 1)) / 2),
                                                    K, lp);
       }
-
 
 
       /**
@@ -1382,6 +1429,92 @@ namespace stan {
         for (size_t j = 0; j < n; ++j)
           for (size_t i = 0; i < m; ++i)
             v(i, j) = scalar_lub_constrain(lb, ub, lp);
+        return v;
+      }
+
+      template <typename TL, typename TS>
+      inline vector_t vector_locscale(const TL loc, const TS scale, size_t m) {
+        vector_t v(m);
+        for (size_t i = 0; i < m; ++i)
+          v(i) = scalar_locscale(loc, scale);
+        return v;
+      }
+
+      template <typename TL, typename TS>
+      inline vector_t
+      vector_locscale_constrain(const TL loc, const TS scale, size_t m) {
+        vector_t v(m);
+        for (size_t i = 0; i < m; ++i)
+          v(i) = scalar_locscale_constrain(loc, scale);
+        return v;
+      }
+
+      template <typename TL, typename TS>
+      inline vector_t
+      vector_locscale_constrain(const TL loc, const TS scale, size_t m, T& lp) {
+        vector_t v(m);
+        for (size_t i = 0; i < m; ++i)
+          v(i) = scalar_locscale_constrain(loc, scale, lp);
+        return v;
+      }
+
+      template <typename TL, typename TS>
+      inline row_vector_t row_vector_locscale(const TL loc, const TS scale,
+                                              size_t m) {
+        row_vector_t v(m);
+        for (size_t i = 0; i < m; ++i)
+          v(i) = scalar_locscale(loc, scale);
+        return v;
+      }
+
+      template <typename TL, typename TS>
+      inline row_vector_t
+      row_vector_locscale_constrain(const TL loc, const TS scale, size_t m) {
+        row_vector_t v(m);
+        for (size_t i = 0; i < m; ++i)
+          v(i) = scalar_locscale_constrain(loc, scale);
+        return v;
+      }
+
+      template <typename TL, typename TS>
+      inline row_vector_t
+      row_vector_locscale_constrain(const TL loc, const TS scale, size_t m,
+                                    T& lp) {
+        row_vector_t v(m);
+        for (size_t i = 0; i < m; ++i)
+          v(i) = scalar_locscale_constrain(loc, scale, lp);
+        return v;
+      }
+
+      template <typename TL, typename TS>
+      inline matrix_t matrix_locscale(const TL loc, const TS scale, size_t m,
+                                      size_t n) {
+        matrix_t v(m, n);
+        for (size_t j  = 0; j < n; ++j)
+          for (size_t i = 0; i < m; ++i)
+            v(i, j) = scalar_locscale(loc, scale);
+        return v;
+      }
+
+      template <typename TL, typename TS>
+      inline matrix_t
+      matrix_locscale_constrain(const TL loc, const TS scale, size_t m,
+                                size_t n) {
+        matrix_t v(m, n);
+        for (size_t j = 0; j < n; ++j)
+          for (size_t i = 0; i < m; ++i)
+            v(i, j) = scalar_locscale_constrain(loc, scale);
+        return v;
+      }
+
+      template <typename TL, typename TS>
+      inline matrix_t
+      matrix_locscale_constrain(const TL loc, const TS scale, size_t m,
+                                size_t n, T& lp) {
+        matrix_t v(m, n);
+        for (size_t j = 0; j < n; ++j)
+          for (size_t i = 0; i < m; ++i)
+            v(i, j) = scalar_locscale_constrain(loc, scale, lp);
         return v;
       }
     };
